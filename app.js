@@ -47,3 +47,69 @@ async function showEmployeeSummary() {
         runApp();
     });
 };
+//show all roles
+async function showRoleSummary() {
+    console.log(' ');
+    await db.query('SELECT r.id, title, salary, name AS department FROM role r LEFT JOIN department d ON department_id = d.id', (err, res) => {
+        if (err) throw err;
+        console.table(res);
+        runApp();
+    })
+};
+//show all depts
+async function showDepartments() {
+    console.log(' ');
+    await db.query('SELECT id, name AS department FROM department', (err, res) => {
+        if (err) throw err;
+        console.table(res);
+        runApp();
+    })
+};
+
+// checks for empty spaces
+async function confirmStringInput(input) {
+    if ((input.trim() != "") && (input.trim().length <= 30)) {
+        return true;
+    }
+    return "Invalid input. Please limit your input to 30 characters or less."
+};
+
+//add employee questions
+async function addEmployee() {
+    let positions = await db.query('SELECT id, title FROM role');
+    let managers = await db.query('SELECT id, CONCAT(first_name, " ", last_name) AS Manager FROM employee');
+    managers.unshift({ id: null, Manager: "None" });
+
+    inquirer.prompt([
+        {
+            name: "firstName",
+            type: "input",
+            message: "Enter employee's first name:",
+            validate: confirmStringInput
+        },
+        {
+            name: "lastName",
+            type: "input",
+            message: "Enter employee's last name:",
+            validate: confirmStringInput
+        },
+        {
+            name: "role",
+            type: "list",
+            message: "Choose employee role:",
+            choices: positions.map(obj => obj.title)
+        },
+        {
+            name: "manager",
+            type: "list",
+            message: "Choose the employee's manager:",
+            choices: managers.map(obj => obj.Manager)
+        }
+    ]).then(answers => {
+        let positionDetails = positions.find(obj => obj.title === answers.role);
+        let manager = managers.find(obj => obj.Manager === answers.manager);
+        db.query("INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?)", [[answers.firstName.trim(), answers.lastName.trim(), positionDetails.id, manager.id]]);
+        console.log("\x1b[32m", `${answers.firstName} was added to the employee database!`);
+        runApp();
+    });
+};
