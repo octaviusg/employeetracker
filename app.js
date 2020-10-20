@@ -113,3 +113,98 @@ async function addEmployee() {
         runApp();
     });
 };
+
+// delete employee
+async function removeEmployee() {
+    let employees = await db.query('SELECT id, CONCAT(first_name, " ", last_name) AS name FROM employee');
+    employees.push({ id: null, name: "Cancel" });
+
+    inquirer.prompt([
+        {
+            name: "employeeName",
+            type: "list",
+            message: "Remove which employee?",
+            choices: employees.map(obj => obj.name)
+        }
+    ]).then(response => {
+        if (response.employeeName != "Cancel") {
+            let unluckyEmployee = employees.find(obj => obj.name === response.employeeName);
+            db.query("DELETE FROM employee WHERE id=?", unluckyEmployee.id);
+            console.log("\x1b[32m", `${response.employeeName} was let go...`);
+        }
+        runApp();
+    })
+};
+
+// update manager and error for manager 
+async function updateManager() {
+    let employees = await db.query('SELECT id, CONCAT(first_name, " ", last_name) AS name FROM employee');
+    employees.push({ id: null, name: "Cancel" });
+
+    inquirer.prompt([
+        {
+            name: "empName",
+            type: "list",
+            message: "For which employee?",
+            choices: employees.map(obj => obj.name)
+        }
+    ]).then(employeeInfo => {
+        if (employeeInfo.empName == "Cancel") {
+            runApp();
+            return;
+        }
+        let managers = employees.filter(currEmployee => currEmployee.name != employeeInfo.empName);
+        for (i in managers) {
+            if (managers[i].name === "Cancel") {
+                managers[i].name = "None";
+            }
+        };
+
+        inquirer.prompt([
+            {
+                name: "mgName",
+                type: "list",
+                message: "Change their manager to:",
+                choices: managers.map(obj => obj.name)
+            }
+        ]).then(managerInfo => {
+            let empID = employees.find(obj => obj.name === employeeInfo.empName).id
+            let mgID = managers.find(obj => obj.name === managerInfo.mgName).id
+            db.query("UPDATE employee SET manager_id=? WHERE id=?", [mgID, empID]);
+            console.log("\x1b[32m", `${employeeInfo.empName} now reports to ${managerInfo.mgName}`);
+            runApp();
+        })
+    })
+};
+
+
+// employee role changes
+async function updateEmployeeRole() {
+    let employees = await db.query('SELECT id, CONCAT(first_name, " ", last_name) AS name FROM employee');
+    employees.push({ id: null, name: "Cancel" });
+    let roles = await db.query('SELECT id, title FROM role');
+
+    inquirer.prompt([
+        {
+            name: "empName",
+            type: "list",
+            message: "For which employee?",
+            choices: employees.map(obj => obj.name)
+        },
+        {
+            name: "newRole",
+            type: "list",
+            message: "Change their role to:",
+            choices: roles.map(obj => obj.title)
+        }
+    ]).then(answers => {
+        if (answers.empName != "Cancel") {
+            let empID = employees.find(obj => obj.name === answers.empName).id
+            let roleID = roles.find(obj => obj.title === answers.newRole).id
+            db.query("UPDATE employee SET role_id=? WHERE id=?", [roleID, empID]);
+            console.log("\x1b[32m", `${answers.empName} new role is ${answers.newRole}`);
+        }
+        runApp();
+    })
+};
+
